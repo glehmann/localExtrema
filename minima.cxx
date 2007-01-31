@@ -10,9 +10,9 @@
 int main(int argc, char * argv[])
 {
 
-  if( argc != 4 )
+  if( argc != 6 )
     {
-    std::cerr << "usage: " << argv[0] << " input output radius flat" << std::endl;
+    std::cerr << "usage: " << argv[0] << " input output radius flat threshold" << std::endl;
     // std::cerr << "  : " << std::endl;
     exit(1);
     }
@@ -36,7 +36,8 @@ int main(int argc, char * argv[])
   FilterType::Pointer filter = FilterType::New();
   filter->SetInput( reader->GetOutput() );
   filter->SetKernel( kernel );
-//   filter->SetFlatToForeground( atoi(argv[4]) );
+  filter->SetFlatToForeground( atoi(argv[4]) );
+  filter->SetThreshold( atoi(argv[5]) );
 
   itk::SimpleFilterWatcher watcher(filter, "filter");
 

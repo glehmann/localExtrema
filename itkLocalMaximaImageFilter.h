@@ -44,6 +44,8 @@ public:
     result->m_Count = this->m_Count;
     result->m_ForegroundValue = this->m_ForegroundValue;
     result->m_BackgroundValue = this->m_BackgroundValue;
+    result->m_FlatToForeground = this->m_FlatToForeground;
+    result->m_Threshold = this->m_Threshold;
     return result;
     }
 
@@ -107,6 +109,11 @@ public:
 
   inline const TOutputPixel & GetValueMap( const TInputPixel & centerPixel )
     {
+    if( centerPixel < m_Threshold )
+      {
+      return m_BackgroundValue;
+      }
+
     // clean the map
     typename MapType::iterator mapIt = m_Map.begin();
     while( mapIt != m_Map.end() )
@@ -131,9 +138,19 @@ public:
       {
       const TInputPixel & max = m_Map.rbegin()->first;
       const TInputPixel & min = m_Map.begin()->first;
-      if( centerPixel >= max && centerPixel != min )
+      if( m_FlatToForeground )
         {
-        return m_ForegroundValue;
+        if( centerPixel >= max )
+          {
+          return m_ForegroundValue;
+          }
+        }
+      else
+        {
+        if( centerPixel >= max && centerPixel != min )
+          {
+          return m_ForegroundValue;
+          }
         }
       }
     return m_BackgroundValue;
@@ -190,11 +207,26 @@ public:
 
   inline const TOutputPixel & GetValueVector( const TInputPixel & centerPixel )
     {
-    if( m_Count > 0 &&  centerPixel >= m_Max && centerPixel != m_Min )
+    if( centerPixel < m_Threshold )
       {
-      return m_ForegroundValue;
+      return m_BackgroundValue;
       }
-    return m_BackgroundValue;
+
+    if( m_FlatToForeground )
+      {
+      if( m_Count > 0 &&  centerPixel >= m_Max )
+        {
+        return m_ForegroundValue;
+        }
+      }
+    else
+      {
+      if( m_Count > 0 &&  centerPixel >= m_Max && centerPixel != m_Min )
+        {
+        return m_ForegroundValue;
+        }
+      }
+      return m_BackgroundValue;
     }
 
   std::vector<unsigned long> m_Vector;
@@ -213,10 +245,21 @@ public:
     m_BackgroundValue = v;
     }
 
+  void SetFlatToForeground( bool v )
+    {
+    m_FlatToForeground = v;
+    }
+
+  void SetThreshold( TInputPixel v )
+    {
+    m_Threshold = v;
+    }
+
 
   TOutputPixel m_ForegroundValue;
   TOutputPixel m_BackgroundValue;
-
+  bool m_FlatToForeground;
+  TInputPixel m_Threshold;
 
 };
 } // end namespace Function
@@ -290,11 +333,20 @@ public:
   itkSetMacro(BackgroundValue, OutputPixelType);
   itkGetConstMacro(BackgroundValue, OutputPixelType);
 
+  itkSetMacro(FlatToForeground, bool);
+  itkGetConstMacro(FlatToForeground, bool);
+  itkBooleanMacro(FlatToForeground);
+
+  itkSetMacro(Threshold, PixelType);
+  itkGetConstMacro(Threshold, PixelType);
+
 protected:
   LocalMaximaImageFilter()
     {
     m_ForegroundValue = NumericTraits<OutputPixelType>::max();
     m_BackgroundValue = NumericTraits<OutputPixelType>::NonpositiveMin();
+    m_FlatToForeground = true;
+    m_Threshold = NumericTraits<PixelType>::NonpositiveMin();
     };
 
   ~LocalMaximaImageFilter() {};
@@ -304,6 +356,8 @@ protected:
     HistogramType * histogram = Superclass::NewHistogram();
     histogram->SetForegroundValue( this->GetForegroundValue() );
     histogram->SetBackgroundValue( this->GetBackgroundValue() );
+    histogram->SetFlatToForeground( this->GetFlatToForeground() );
+    histogram->SetThreshold( this->GetThreshold() );
     return histogram;
     }
 
@@ -312,6 +366,8 @@ protected:
     Superclass::PrintSelf(os, indent);
     os << indent << "ForegroundValue: "  << static_cast<typename NumericTraits<OutputPixelType>::PrintType>(m_ForegroundValue) << std::endl;
     os << indent << "BackgroundValue: "  << static_cast<typename NumericTraits<OutputPixelType>::PrintType>(m_BackgroundValue) << std::endl;
+    os << indent << "FlatToForeground: "  << m_FlatToForeground << std::endl;
+    os << indent << "Threshold: "  << static_cast<typename NumericTraits<PixelType>::PrintType>(m_Threshold) << std::endl;
     }
 
 private:
@@ -320,6 +376,8 @@ private:
 
   OutputPixelType m_ForegroundValue;
   OutputPixelType m_BackgroundValue;
+  bool m_FlatToForeground;
+  PixelType m_Threshold;
 
 } ; // end of class
 
