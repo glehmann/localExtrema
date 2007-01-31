@@ -151,6 +151,18 @@ public:
    * the request is cropped by the LargestPossibleRegion. */
   void GenerateInputRequestedRegion() ;
 
+  /**
+   * A convenient method to set the neighborhood to a box with the
+   * radius passed in parameter.
+   */
+  void SetRadius( const RadiusType & radius );
+
+  /**
+   * A convenient method to set the neighborhood to a box with the
+   * radius passed in parameter for all the dimensions.
+   */
+  void SetRadius( unsigned long radius );
+
 protected:
   MovingHistogramImageFilter();
   ~MovingHistogramImageFilter() {};

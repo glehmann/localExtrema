@@ -40,6 +40,7 @@ MovingHistogramImageFilter<TInputImage, TOutputImage, TKernel, THistogram>
   : m_Kernel()
 {
   m_PixelsPerTranslation = 0;
+  this->SetRadius( 1 );
 }
 
 
@@ -51,6 +52,31 @@ MovingHistogramImageFilter<TInputImage, TOutputImage, TKernel, THistogram>
   return new THistogram();
 }
 
+
+template<class TInputImage, class TOutputImage, class TKernel, class THistogram>
+void
+MovingHistogramImageFilter<TInputImage, TOutputImage, TKernel, THistogram>
+::SetRadius( const RadiusType & radius )
+{
+  KernelType kernel;
+  kernel.SetRadius( radius );
+  for( typename KernelType::Iterator kit=kernel.Begin(); kit!=kernel.End(); kit++ )
+    {
+    *kit = 1;
+    }
+  this->SetKernel( kernel );
+}
+
+
+template<class TInputImage, class TOutputImage, class TKernel, class THistogram>
+void
+MovingHistogramImageFilter<TInputImage, TOutputImage, TKernel, THistogram>
+::SetRadius( unsigned long radius )
+{
+  RadiusType rad;
+  rad.Fill( radius );
+  this->SetRadius( rad );
+}
 
 
 template<class TInputImage, class TOutputImage, class TKernel, class THistogram>

@@ -4,7 +4,6 @@
 #include "itkSimpleFilterWatcher.h"
 
 #include "itkLocalMaximaImageFilter.h"
-#include "itkFlatStructuringElement.h"
 
 
 int main(int argc, char * argv[])
@@ -26,16 +25,10 @@ int main(int argc, char * argv[])
   ReaderType::Pointer reader = ReaderType::New();
   reader->SetFileName( argv[1] );
 
-  typedef itk::FlatStructuringElement<dim> SRType;
-  SRType::RadiusType radius;
-  radius.Fill( atoi(argv[3]) );
-  //radius[1]=0;
-  SRType kernel = SRType::Box( radius );
-
-  typedef itk::LocalMaximaImageFilter< IType, IType, SRType > FilterType;
+  typedef itk::LocalMaximaImageFilter< IType, IType > FilterType;
   FilterType::Pointer filter = FilterType::New();
   filter->SetInput( reader->GetOutput() );
-  filter->SetKernel( kernel );
+  filter->SetRadius( atoi(argv[3]) );
   filter->SetFlatToForeground( atoi(argv[4]) );
   filter->SetThreshold( atoi(argv[5]) );
 

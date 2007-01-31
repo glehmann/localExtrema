@@ -275,7 +275,7 @@ public:
  */
 
 
-template<class TInputImage, class TOutputImage, class TKernel>
+template<class TInputImage, class TOutputImage, class TKernel=Neighborhood< bool, TInputImage::ImageDimension > >
 class ITK_EXPORT LocalMinimaImageFilter : 
     public MovingHistogramImageFilter<TInputImage, TOutputImage, TKernel,
       typename  Function::LocalMinimaHistogram< typename TInputImage::PixelType, typename TOutputImage::PixelType > >

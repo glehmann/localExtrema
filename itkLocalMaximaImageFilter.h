@@ -18,6 +18,7 @@
 #define __itkLocalMaximaImageFilter_h
 
 #include "itkMovingHistogramImageFilter.h"
+#include "itkNeighborhood.h"
 #include <map>
 
 namespace itk {
@@ -275,7 +276,7 @@ public:
  */
 
 
-template<class TInputImage, class TOutputImage, class TKernel>
+template<class TInputImage, class TOutputImage, class TKernel=Neighborhood< bool, TInputImage::ImageDimension > >
 class ITK_EXPORT LocalMaximaImageFilter : 
     public MovingHistogramImageFilter<TInputImage, TOutputImage, TKernel,
       typename  Function::LocalMaximaHistogram< typename TInputImage::PixelType, typename TOutputImage::PixelType > >
