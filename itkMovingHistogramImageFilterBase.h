@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Insight Segmentation & Registration Toolkit
-  Module:    $RCSfile: itkMovingHistogramImageFilter.h,v $
+  Module:    $RCSfile: itkMovingHistogramImageFilterBase.h,v $
   Language:  C++
   Date:      $Date: 2004/04/30 21:02:03 $
   Version:   $Revision: 1.15 $
@@ -14,17 +14,19 @@
      PURPOSE.  See the above copyright notices for more information.
 
 =========================================================================*/
-#ifndef __itkMovingHistogramImageFilter_h
-#define __itkMovingHistogramImageFilter_h
+#ifndef __itkMovingHistogramImageFilterBase_h
+#define __itkMovingHistogramImageFilterBase_h
 
-#include "itkMovingHistogramImageFilterBase.h"
-
-//#define zigzag
+#include "itkImageToImageFilter.h"
+#include <list>
+#include <map>
+#include <set>
+#include "itkOffsetLexicographicCompare.h"
 
 namespace itk {
 
 /**
- * \class MovingHistogramImageFilter
+ * \class MovingHistogramImageFilterBase
  * \brief Implements a generic moving histogram algorithm
  *
  * This filter is a base class to implement efficiently many neighborhood
@@ -64,7 +66,7 @@ namespace itk {
  * + AType GetValue() is called to set the value of the output image. AType
  * must be the output pixel type, or a type castable to the output pixel type.
  *
- * MovingHistogramImageFilter add the new pixels before removing the old ones,
+ * MovingHistogramImageFilterBase add the new pixels before removing the old ones,
  * so, if AddBoundary() is implemented and/or the kernel is symetric, it is safe
  * to consider that the histogram will never be empty.
  *
@@ -86,14 +88,14 @@ namespace itk {
  * \author Richard Beare
  */
 
-template<class TInputImage, class TOutputImage, class TKernel, class THistogram >
-class ITK_EXPORT MovingHistogramImageFilter : 
-    public MovingHistogramImageFilterBase<TInputImage, TOutputImage, TKernel>
+template<class TInputImage, class TOutputImage, class TKernel >
+class ITK_EXPORT MovingHistogramImageFilterBase :
+    public ImageToImageFilter<TInputImage, TOutputImage>
 {
 public:
   /** Standard class typedefs. */
-  typedef MovingHistogramImageFilter Self;
-  typedef MovingHistogramImageFilterBase<TInputImage, TOutputImage, TKernel>  Superclass;
+  typedef MovingHistogramImageFilterBase Self;
+  typedef ImageToImageFilter<TInputImage,TOutputImage>  Superclass;
   typedef SmartPointer<Self>        Pointer;
   typedef SmartPointer<const Self>  ConstPointer;
   
@@ -101,8 +103,8 @@ public:
   itkNewMacro(Self);  
 
   /** Runtime information support. */
-  itkTypeMacro(MovingHistogramImageFilter, 
-               MovingHistogramImageFilter);
+  itkTypeMacro(MovingHistogramImageFilterBase, 
+               ImageToImageFilter);
   
   /** Image related typedefs. */
   typedef TInputImage InputImageType;
@@ -118,7 +120,7 @@ public:
   /** Image related typedefs. */
   itkStaticConstMacro(ImageDimension, unsigned int,
                       TInputImage::ImageDimension);
-                      
+  
   /** Kernel typedef. */
   typedef TKernel KernelType;
   
@@ -132,48 +134,97 @@ public:
 
   typedef typename std::map< OffsetType, OffsetListType, typename Functor::OffsetLexicographicCompare<ImageDimension> > OffsetMapType;
 
-protected:
-  MovingHistogramImageFilter();
-  ~MovingHistogramImageFilter() {};
+  /** Set kernel (structuring element). */
+  void SetKernel( const KernelType& kernel );
+
+  /** Get the kernel (structuring element). */
+  itkGetConstReferenceMacro(Kernel, KernelType);
   
-  /** Multi-thread version GenerateData. */
-  void  ThreadedGenerateData (const OutputImageRegionType& 
-                              outputRegionForThread,
-                              int threadId) ;
+  itkGetMacro(PixelsPerTranslation, unsigned long);
+  
+  /** MovingHistogramImageFilterBaseBase need to make sure they request enough of an
+   * input image to account for the structuring element size.  The input
+   * requested region is expanded by the radius of the structuring element.
+   * If the request extends past the LargestPossibleRegion for the input,
+   * the request is cropped by the LargestPossibleRegion. */
+  void GenerateInputRequestedRegion() ;
 
-  /** NewHistogram must return an histogram object. It's also the good place to 
-   * pass parameters to the histogram.
-   * A default version is provided which just create a new Historgram and return
-   * it.
+  /**
+   * A convenient method to set the neighborhood to a box with the
+   * radius passed in parameter.
    */
-  virtual THistogram * NewHistogram();
+  void SetRadius( const RadiusType & radius );
 
-#ifndef zigzag
-  // declare the type used to store the histogram
-  typedef THistogram HistogramType;
+  /**
+   * A convenient method to set the neighborhood to a box with the
+   * radius passed in parameter for all the dimensions.
+   */
+  void SetRadius( unsigned long radius );
 
-  void pushHistogram(HistogramType * histogram, 
-		     const OffsetListType* addedList,
-		     const OffsetListType* removedList,
-		     const RegionType &inputRegion,
-		     const RegionType &kernRegion,
-		     const InputImageType* inputImage,
-		     const IndexType currentIdx);
+protected:
+  MovingHistogramImageFilterBase();
+  ~MovingHistogramImageFilterBase() {};
+  
+  void PrintSelf(std::ostream& os, Indent indent) const;
 
-  void printHist(const HistogramType &H);
+  void GetDirAndOffset(const IndexType LineStart, 
+                      const IndexType PrevLineStart,
+                      const int ImageDimension,
+                      OffsetType &LineOffset,
+                      OffsetType &Changes,
+                      int &LineDirection);
 
-#endif
+  /** kernel or structuring element to use. */
+  KernelType m_Kernel ;
+
+  // store the added and removed pixel offset in a list
+  OffsetMapType m_AddedOffsets;
+  OffsetMapType m_RemovedOffsets;
+
+  // store the offset of the kernel to initialize the histogram
+  OffsetListType m_KernelOffsets;
+
+  typename itk::FixedArray< int, ImageDimension > m_Axes;
+
+  unsigned long m_PixelsPerTranslation;
+
 
 private:
-  MovingHistogramImageFilter(const Self&); //purposely not implemented
+  MovingHistogramImageFilterBase(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
+
+  class DirectionCost {
+    public :
+    DirectionCost( int dimension, int count )
+      {
+      m_Dimension = dimension;
+      m_Count = count;
+      }
+    
+    /**
+     * return true if the object is a worth choice for the best axis
+     * than the object in parameter
+     */
+    inline bool operator< ( const DirectionCost &dc ) const
+      {
+      if( m_Count > dc.m_Count )
+        { return true; }
+      else if( m_Count < dc.m_Count )
+        { return false; }
+      else //if (m_Count == dc.m_Count) 
+        { return m_Dimension > dc.m_Dimension; }
+      }
+
+    int m_Dimension;
+    int m_Count;
+  };
 
 } ; // end of class
 
 } // end namespace itk
   
 #ifndef ITK_MANUAL_INSTANTIATION
-#include "itkMovingHistogramImageFilter.txx"
+#include "itkMovingHistogramImageFilterBase.txx"
 #endif
 
 #endif
